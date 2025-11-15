@@ -14,7 +14,7 @@ BACKEND_PORT = int(os.getenv("CYBERGUARD_BACKEND_PORT", "5001"))
 # IMPORTANTE: Debe incluir el endpoint /event para que el agente pueda enviar eventos
 BACKEND_URL = os.getenv(
     "CYBERGUARD_BACKEND_URL", 
-    f"http://10.74.10.88:5001"  # Por defecto localhost, configurar con IP real
+    f"http://10.74.10.88:5001"  #IP del puerto
 )
 
 # Configuración del Agente (Computadora 2 - Cliente)
@@ -32,7 +32,7 @@ FOLDER_TO_WATCH = os.getenv("CYBERGUARD_WATCH_FOLDER", DEFAULT_FOLDER)
 
 # Configuración de red para ataque remoto
 # IP de la computadora donde está el agente (para ataques remotos)
-AGENT_IP = os.getenv("CYBERGUARD_AGENT_IP", "172.25.128.1")
+AGENT_IP = os.getenv("CYBERGUARD_AGENT_IP", "110.74.10.88")
 AGENT_ATTACK_URL = f"http://{AGENT_IP}:{AGENT_PORT}/attack"
 
 # Cooldown para detección de eventos
