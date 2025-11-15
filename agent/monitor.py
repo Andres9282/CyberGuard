@@ -15,8 +15,9 @@ from ml.features import extract_features   # <-- USAMOS LA FUNCIÓN NUEVA UNIFIC
 # ------------------------------
 # CONFIGURACIÓN DEL AGENTE
 # ------------------------------
+from pathlib import Path
+FOLDER_TO_WATCH = str(Path.home() / "victim_data")
 
-FOLDER_TO_WATCH = "/home/andres/attack_test"   # Carpeta vulnerable
 BACKEND_URL = "http://10.74.10.88:5001/event"  # IP real de Windows (WSL expuesto)
 COOLDOWN_SECONDS = 5
 last_trigger_time = 0
