@@ -11,7 +11,6 @@ app = Flask(__name__)
 # Crear tablas al iniciar
 create_tables()
 
-
 @app.route("/")
 def index():
     return "CyberGuard Backend OK"
@@ -20,72 +19,97 @@ def index():
 @app.route("/event", methods=["POST"])
 def receive_event():
     """
-    Recibe eventos enviados por el agente.
-    Crea un caso con la evidencia capturada.
+    Recibe eventos del agente.
+    Crea un caso y maneja JSON incompleto sin fallar.
     """
-    data = request.json
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Invalid or empty JSON"}), 400
+
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # --- Extraer datos para crear el caso ---
+    # -------------------------
+    # 1) Extraer evidencia segura
+    # -------------------------
+
+    evidence = data.get("evidence", {})
+    process_info = evidence.get("process", {})
+    network_info = evidence.get("network", [])
+    files_info = evidence.get("files", [])
+
+    # -------------------------
+    # 2) Construir caso
+    # -------------------------
+
     case_info = {
         "timestamp": timestamp,
         "severity": data.get("severity", "unknown"),
-        "process_name": data["evidence"]["process"].get("name", "unknown"),
+        "process_name": process_info.get("name", "unknown"),
         "attacker_ip": None,
         "folder": data.get("folder", "unknown"),
         "actions": data.get("actions", [])
     }
 
-    # --- Intentar obtener IP del atacante ---
+    # -------------------------
+    # 3) Intentar obtener la IP del atacante
+    # -------------------------
+
     try:
-        conns = data["evidence"]["network"]
-        for c in conns:
-            if c.get("raddr"):
+        for c in network_info:
+            if isinstance(c, dict) and c.get("raddr"):
                 case_info["attacker_ip"] = c["raddr"].split(":")[0]
                 break
-    except:
-        pass
+    except Exception as e:
+        print("Error analizando conexiones:", e)
 
-    # Crear caso en DB
-    case_id = create_case(case_info)
+    # -------------------------
+    # 4) Crear caso en base de datos
+    # -------------------------
 
-    # --- Guardar evento ---
+    try:
+        case_id = create_case(case_info)
+    except Exception as e:
+        return jsonify({"error": "Database error", "details": str(e)}), 500
+
+    # -------------------------
+    # 5) Guardar evento
+    # -------------------------
+
     add_event(case_id, {
         "timestamp": timestamp,
         "type": data.get("type", "unknown"),
         "details": data.get("features", {})
     })
 
-    # --- Guardar la evidencia completa ---
-    add_evidence(case_id, data["evidence"])
+    # -------------------------
+    # 6) Guardar evidencia
+    # -------------------------
+
+    add_evidence(case_id, {
+        "process": process_info,
+        "network": network_info,
+        "files": files_info,
+        "path_triggered": evidence.get("path_triggered", "")
+    })
 
     return jsonify({
         "status": "ok",
         "case_id": case_id,
-        "message": "Evento recibido y caso creado exitosamente."
+        "message": "Evento recibido correctamente."
     })
 
 
 @app.route("/cases", methods=["GET"])
 def list_cases():
-    """
-    Devuelve una lista de todos los casos registrados.
-    """
     rows = get_cases()
     return jsonify(rows)
 
 
 @app.route("/cases/<int:case_id>", methods=["GET"])
 def case_details(case_id):
-    """
-    Devuelve todos los detalles de un caso:
-    - datos del caso
-    - eventos relacionados
-    - evidencia asociada
-    """
     return jsonify(get_case_details(case_id))
 
 
 if __name__ == "__main__":
-    # Importante para que otras computadoras puedan conectarse
     app.run(host="0.0.0.0", port=5001)
