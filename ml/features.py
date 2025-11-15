@@ -1,30 +1,24 @@
 # ml/features.py
-import os
 import psutil
-from .paths import NORMAL_LOG_DIR
+import os
+from pathlib import Path
 
-def extract_features(monitor_folder=None):
+def extract_features(attack_folder=None):
     """
-    Devuelve un vector de características del estado actual del sistema.
-    features = [num_archivos, cpu_percent, num_procesos]
-    
-    monitor_folder: carpeta a observar. Si es None usa NORMAL_LOG_DIR.
+    Devuelve el vector de características uniforme para IA.
+    features = [cpu_percent, ram_percent, total_processes, files_in_attack_folder]
     """
-    folder = monitor_folder or NORMAL_LOG_DIR
 
-    # Asegurarse de que la carpeta existe
-    os.makedirs(folder, exist_ok=True)
-
-    # 1) Número de archivos en la carpeta
-    try:
-        files = len(os.listdir(folder))
-    except FileNotFoundError:
-        files = 0
-
-    # 2) Uso de CPU en %
     cpu = psutil.cpu_percent(interval=0.1)
-
-    # 3) Número de procesos activos
+    ram = psutil.virtual_memory().percent
     processes = len(psutil.pids())
 
-    return [files, cpu, processes]
+    # contar archivos en la carpeta vigilada
+    file_count = 0
+    if attack_folder:
+        try:
+            file_count = len(os.listdir(attack_folder))
+        except FileNotFoundError:
+            file_count = 0
+
+    return [cpu, ram, processes, file_count]

@@ -1,12 +1,11 @@
 # ml/detect.py
 
-import json
-import psutil
 import pickle
 from pathlib import Path
+from ml.features import extract_features   # <-- IMPORTAMOS LA FUNCIÓN UNIFICADA
+
 
 MODEL_PATH = Path("ml/anomaly_model.pkl")
-BASELINE_PATH = Path("data/baseline_samples.json")
 
 
 # ---------------------------------------
@@ -24,33 +23,13 @@ model = load_model()
 
 
 # ---------------------------------------
-# EXTRAER FEATURES PARA EL MODELO ML
-# ---------------------------------------
-
-def extract_features_for_ml():
-    """
-    Extrae métricas del sistema:
-    - número de procesos
-    - uso de CPU promedio
-    - uso de RAM
-    """
-    processes = list(psutil.process_iter())
-    num_processes = len(processes)
-
-    cpu_percent = psutil.cpu_percent(interval=0.2)
-    ram_percent = psutil.virtual_memory().percent
-
-    return [num_processes, cpu_percent, ram_percent]
-
-
-# ---------------------------------------
 # DETECTAR ANOMALÍAS
 # ---------------------------------------
 
 def detect_anomaly(features):
     """
-    Usa el modelo entrenado para detectar anomalías.
-    Si no hay modelo → siempre retorna False.
+    Usa el IsolationForest entrenado para determinar si hay anomalía.
+    Retorna True si es ataque.
     """
     if model is None:
         print("⚠️ Modelo no cargado → no se detectan anomalías.")
@@ -58,8 +37,23 @@ def detect_anomaly(features):
 
     try:
         prediction = model.predict([features])[0]
-        # IsolationForest: -1 = anomalía, 1 = normal
-        return prediction == -1
+        return prediction == -1  # -1 = anomalía
     except Exception as e:
         print("ERROR detectando anomalía:", e)
         return False
+
+
+# ---------------------------------------
+# MODO PRUEBA: evaluar estado actual en tiempo real
+# ---------------------------------------
+
+def detect_live():
+    features = extract_features()
+    print("Features recolectados ahora:", features)
+    return detect_anomaly(features)
+
+
+if __name__ == "__main__":
+    print("🔍 Prueba rápida de detección en vivo:")
+    result = detect_live()
+    print("¿Ataque detectado?:", result)

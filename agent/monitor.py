@@ -1,4 +1,5 @@
 # agent/monitor.py
+
 import time
 import json
 import psutil
@@ -7,7 +8,8 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from ml.detect import detect_anomaly, extract_features_for_ml
+from ml.detect import detect_anomaly
+from ml.features import extract_features   # <-- USAMOS LA FUNCIÓN NUEVA UNIFICADA
 
 
 # ------------------------------
@@ -16,30 +18,24 @@ from ml.detect import detect_anomaly, extract_features_for_ml
 
 FOLDER_TO_WATCH = "/home/andres/attack_test"   # Carpeta vulnerable
 BACKEND_URL = "http://10.74.10.88:5001/event"  # IP real de Windows (WSL expuesto)
-COOLDOWN_SECONDS = 5                           # evitar miles de alertas
+COOLDOWN_SECONDS = 5
 last_trigger_time = 0
 
 
 # ------------------------------
-# FUNCIÓN: Extrae evidencia completa
+# FUNCIÓN: Extraer evidencia
 # ------------------------------
 
 def collect_evidence(path_changed):
-    """
-    Reúne evidencia forense:
-    - archivos modificados
-    - proceso con más uso de CPU
-    - conexiones de red activas
-    """
-
-    # 1. procesos sospechosos (CPU alta)
-    suspicious = sorted(psutil.process_iter(['pid', 'name', 'cpu_percent']),
-                        key=lambda p: p.info['cpu_percent'],
-                        reverse=True)
-
+    # 1. top proceso por uso de CPU
+    suspicious = sorted(
+        psutil.process_iter(['pid', 'name', 'cpu_percent']),
+        key=lambda p: p.info['cpu_percent'],
+        reverse=True
+    )
     top_process = suspicious[0].info if suspicious else {"name": "unknown", "pid": -1}
 
-    # 2. conexiones de red activas
+    # 2. conexiones de red
     conns = []
     for c in psutil.net_connections():
         try:
@@ -48,7 +44,7 @@ def collect_evidence(path_changed):
         except:
             pass
 
-    # 3. archivos en la carpeta modificada
+    # 3. archivos en carpeta monitoreada
     files = []
     for p in Path(FOLDER_TO_WATCH).glob("**/*"):
         if p.is_file():
@@ -67,12 +63,7 @@ def collect_evidence(path_changed):
 # ------------------------------
 
 def stop_attack(process_name):
-    """
-    Intenta matar procesos con nombre similar.
-    """
-
     killed = []
-
     for proc in psutil.process_iter(['pid', 'name']):
         try:
             if process_name.lower() in proc.info['name'].lower():
@@ -80,12 +71,11 @@ def stop_attack(process_name):
                 killed.append(proc.info)
         except:
             pass
-
     return killed
 
 
 # ------------------------------
-# FUNCIÓN: ENVIAR EVENTO AL BACKEND
+# FUNCIÓN: ENVIAR REPORTE
 # ------------------------------
 
 def send_to_backend(severity, features, evidence, actions, folder):
@@ -97,7 +87,6 @@ def send_to_backend(severity, features, evidence, actions, folder):
         "actions": actions,
         "evidence": evidence
     }
-
     try:
         res = requests.post(BACKEND_URL, json=data)
         print(" Enviado a backend →", res.text)
@@ -106,7 +95,7 @@ def send_to_backend(severity, features, evidence, actions, folder):
 
 
 # ------------------------------
-# HANDLER: DETECTA CAMBIOS EN LA CARPETA
+# HANDLER: DETECTA CAMBIOS
 # ------------------------------
 
 class FolderChangeHandler(FileSystemEventHandler):
@@ -121,14 +110,12 @@ class FolderChangeHandler(FileSystemEventHandler):
 
         print("\n⚠️ Cambio detectado:", event.src_path)
 
-        # 1. Extraer features para IA
-        features = extract_features_for_ml()
-
+        # 1. EXTRAER FEATURES (la misma función que baseline)
+        features = extract_features(FOLDER_TO_WATCH)
         print("Features extraídos:", features)
 
-        # 2. IA detecta anomalía
+        # 2. IA detecta ataque
         is_attack = detect_anomaly(features)
-
         if not is_attack:
             print("📘 No es ataque. Comportamiento normal.")
             return
@@ -138,15 +125,11 @@ class FolderChangeHandler(FileSystemEventHandler):
         # 3. recolectar evidencia
         evidence = collect_evidence(event.src_path)
 
-        # 4. detenemos proceso sospechoso
+        # 4. parar proceso sospechoso
         killed = stop_attack(evidence["process"]["name"])
+        actions = {"killed_processes": killed}
 
-        actions = {
-            "killed_processes": killed,
-            "files_blocked": False
-        }
-
-        # 5. enviar reporte al backend
+        # 5. enviar reporte
         send_to_backend(
             severity="high",
             features=features,
@@ -157,7 +140,7 @@ class FolderChangeHandler(FileSystemEventHandler):
 
 
 # ------------------------------
-# MAIN: INICIAR OBSERVADOR
+# MAIN
 # ------------------------------
 
 if __name__ == "__main__":
