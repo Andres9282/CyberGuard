@@ -2,7 +2,7 @@
 import requests
 import json
 
-SERVER_IP = "10.74.10.88"   # ← IP de PC1
+SERVER_IP = "100.82.42.122"   # IP Tailscale del backend
 BACKEND_PORT = 5001
 
 url = f"http://{SERVER_IP}:{BACKEND_PORT}/event"
