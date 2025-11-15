@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import sys
@@ -524,5 +524,3 @@ def status():
 
 if __name__ == "__main__":
     app.run(port=5001, debug=True)
-
->>>>>>> a9b5778 (Update completo CyberGuard)
