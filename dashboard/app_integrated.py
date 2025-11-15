@@ -100,6 +100,7 @@ def test_connection():
 def get_status():
     """Estado REAL del sistema - basado en datos reales de la BD"""
     try:
+        print(f"[API] GET /api/status - {datetime.now().strftime('%H:%M:%S')}")
         conn = get_connection()
         cur = conn.cursor()
         
@@ -134,9 +135,18 @@ def get_status():
                 "last_update": datetime.now().isoformat()
             }
         
+        print(f"[API] Status response: {status_info['status']} - {total_cases} casos")
+        
+        # Agregar información adicional para alertas automáticas
+        status_info['has_attack'] = critical_cases > 0
+        status_info['critical_count'] = critical_cases
+        
         return jsonify(status_info)
         
     except Exception as e:
+        print(f"[API] ERROR en /api/status: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             "status": "ERROR",
             "message": f"Error verificando estado: {str(e)}",
@@ -147,6 +157,7 @@ def get_status():
 def get_cases():
     """Casos REALES de la base de datos"""
     try:
+        print(f"[API] GET /api/cases - {datetime.now().strftime('%H:%M:%S')}")
         conn = get_connection()
         cur = conn.cursor()
         cur.execute("""
@@ -176,10 +187,13 @@ def get_cases():
             case['gravedad'] = severity_map.get(case['gravedad'], case['gravedad'])
             cases.append(case)
 
+        print(f"[API] Casos encontrados: {len(cases)}")
         return jsonify(cases)
         
     except Exception as e:
-        print(f"Error getting cases: {e}")
+        print(f"[API] ERROR en /api/cases: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e), "cases": []})
 
 @app.route('/api/cases/<int:case_id>')
@@ -258,25 +272,98 @@ def get_case_detail(case_id):
 
 @app.route('/api/scan', methods=['POST'])
 def trigger_scan():
-    """ESCANEO REAL - No crea datos falsos"""
+    """ESCANEO REAL - Revisa la base de datos para detectar ataques"""
     try:
-        # En lugar de crear datos mock, aquí deberías llamar a tu escáner real
-        # Por ahora solo actualiza el estado
-        return jsonify({
-            "status": "success", 
-            "message": "Escaneo iniciado - Revisa los agentes de seguridad",
-            "note": "Los casos aparecerán cuando se detecten amenazas reales"
-        })
+        print(f"[SCAN] Escaneo iniciado - {datetime.now().strftime('%H:%M:%S')}")
+        conn = get_connection()
+        cur = conn.cursor()
+        
+        # Buscar casos críticos o de alta severidad
+        cur.execute("""
+            SELECT 
+                id,
+                detected_at,
+                severity,
+                process_name,
+                attacker_ip,
+                folder as attack_type
+            FROM cases 
+            WHERE severity IN ('critical', 'high')
+            ORDER BY detected_at DESC
+            LIMIT 10
+        """)
+        critical_cases = cur.fetchall()
+        
+        # Contar todos los casos
+        cur.execute("SELECT COUNT(*) as total FROM cases")
+        total_cases = cur.fetchone()['total']
+        
+        # Contar casos críticos
+        cur.execute("SELECT COUNT(*) as count FROM cases WHERE severity IN ('critical', 'high')")
+        critical_count = cur.fetchone()['count']
+        
+        conn.close()
+        
+        # Preparar respuesta
+        scan_result = {
+            "status": "success",
+            "has_attack": critical_count > 0,
+            "total_cases": total_cases,
+            "critical_cases": critical_count,
+            "cases": []
+        }
+        
+        # Agregar detalles de casos críticos
+        for case in critical_cases:
+            case_dict = dict(case)
+            scan_result["cases"].append({
+                "id": case_dict["id"],
+                "detected_at": case_dict["detected_at"],
+                "severity": case_dict["severity"],
+                "process_name": case_dict["process_name"],
+                "attacker_ip": case_dict["attacker_ip"],
+                "attack_type": case_dict["attack_type"]
+            })
+        
+        if critical_count > 0:
+            scan_result["message"] = f"🚨 ALERTA: Se detectaron {critical_count} ataque(s) crítico(s)"
+            scan_result["alert_type"] = "danger"
+        else:
+            scan_result["message"] = "✅ Sistema seguro - No se detectaron ataques"
+            scan_result["alert_type"] = "success"
+        
+        print(f"[SCAN] Resultado: {critical_count} casos críticos de {total_cases} totales")
+        return jsonify(scan_result)
         
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print(f"[SCAN] ERROR: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            "status": "error",
+            "has_attack": False,
+            "message": f"Error durante el escaneo: {str(e)}",
+            "alert_type": "error"
+        }), 500
 
 # Endpoint para recibir eventos REALES de agentes
 @app.route("/event", methods=["POST"])
 def receive_event():
     """Recibir eventos REALES de agentes de seguridad"""
     try:
+        print(f"\n{'='*60}")
+        print(f"[EVENT] POST /event recibido - {datetime.now().strftime('%H:%M:%S')}")
         data = request.json
+        if not data:
+            print("[EVENT] ERROR: No se recibieron datos JSON")
+            return jsonify({"status": "error", "message": "No se recibieron datos"}), 400
+        
+        print(f"[EVENT] Datos recibidos:")
+        print(f"   - Severity: {data.get('severity', 'N/A')}")
+        print(f"   - Process: {data.get('process_name', 'N/A')}")
+        print(f"   - IP: {data.get('attacker_ip', 'N/A')}")
+        print(f"   - Attack Type: {data.get('attack_type', 'N/A')}")
+        
         conn = get_connection()
         cur = conn.cursor()
 
@@ -347,7 +434,12 @@ def receive_event():
         conn.commit()
         conn.close()
 
-        print(f"✅ Evento recibido y guardado - Case ID: {case_id}")
+        print(f"[EVENT] ✅ Evento guardado exitosamente")
+        print(f"   - Case ID: {case_id}")
+        print(f"   - Eventos guardados: {len(data.get('events', []))}")
+        print(f"   - Artefactos guardados: {len(data.get('artifacts', []))}")
+        print(f"{'='*60}\n")
+        
         return jsonify({
             "status": "ok",
             "case_id": case_id,

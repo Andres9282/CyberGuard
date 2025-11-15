@@ -87,6 +87,23 @@
 
             <!-- Dashboard Page -->
             <div class="page-content active" id="dashboard-page">
+                <!-- Alert Panel (Pizarra de Alertas) -->
+                <div id="alertPanel" class="alert-panel" style="display: none;">
+                    <div class="alert-content">
+                        <div class="alert-icon" id="alertIcon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="alert-text">
+                            <h3 id="alertTitle">Alerta de Seguridad</h3>
+                            <p id="alertMessage">Mensaje de alerta</p>
+                            <div id="alertDetails" class="alert-details"></div>
+                        </div>
+                        <button class="alert-close" onclick="closeAlert()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Status Overview Minimalista -->
                 <div class="status-overview">
                     <div class="status-card main-status">

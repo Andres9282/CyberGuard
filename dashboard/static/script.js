@@ -4,15 +4,19 @@ class CyberGuardDashboard {
         this.currentPage = 'dashboard';
         this.currentCase = null;
         this.cases = [];
+        this.previousCasesCount = 0;
+        this.shownCaseIds = new Set(); // IDs de casos que ya se mostraron en alertas
         this.autoRefreshInterval = null;
         this.init();
     }
 
     init() {
+        console.log('🔧 Configurando dashboard...');
         this.setupEventListeners();
         this.loadInitialData();
         this.startAutoRefresh();
         this.updateCurrentTime();
+        console.log('✅ Dashboard configurado');
     }
 
     setupEventListeners() {
@@ -36,10 +40,16 @@ class CyberGuardDashboard {
     }
 
     async loadInitialData() {
-        await Promise.all([
-            this.loadSystemStatus(),
-            this.loadCases()
-        ]);
+        console.log('📥 Cargando datos iniciales...');
+        try {
+            await Promise.all([
+                this.loadSystemStatus(),
+                this.loadCases()
+            ]);
+            console.log('✅ Datos iniciales cargados');
+        } catch (error) {
+            console.error('❌ Error cargando datos iniciales:', error);
+        }
     }
 
     async loadSystemStatus() {
@@ -72,15 +82,92 @@ class CyberGuardDashboard {
             
             // Si la respuesta es un array, usarlo directamente
             // Si es un objeto con propiedad cases, usar esa propiedad
-            this.cases = Array.isArray(data) ? data : (data.cases || []);
+            const newCases = Array.isArray(data) ? data : (data.cases || []);
+            
+            // Detectar casos críticos nuevos
+            this.detectNewCriticalCases(newCases);
+            
+            this.cases = newCases;
             console.log(`✅ Casos cargados: ${this.cases.length}`);
             this.renderCases();
             this.updateIncidentsCount();
+            this.previousCasesCount = this.cases.length;
         } catch (error) {
             console.error('❌ Error loading cases:', error);
             this.cases = [];
             this.renderCases();
             this.updateIncidentsCount();
+        }
+    }
+    
+    detectNewCriticalCases(cases) {
+        // Filtrar casos críticos o de alta severidad
+        const criticalCases = cases.filter(caseItem => {
+            const severity = (caseItem.gravedad || caseItem.severity || '').toLowerCase();
+            return severity.includes('crítico') || severity.includes('critical') || 
+                   severity.includes('alto') || severity.includes('high');
+        });
+        
+        // Encontrar casos nuevos que no se han mostrado
+        const newCriticalCases = criticalCases.filter(caseItem => {
+            return !this.shownCaseIds.has(caseItem.id);
+        });
+        
+        // Si hay casos críticos nuevos, mostrar alerta automáticamente
+        if (newCriticalCases.length > 0) {
+            console.log(`🚨 Detectados ${newCriticalCases.length} caso(s) crítico(s) nuevo(s)`);
+            
+            // Marcar estos casos como mostrados
+            newCriticalCases.forEach(caseItem => {
+                this.shownCaseIds.add(caseItem.id);
+            });
+            
+            // Mostrar alerta automática
+            this.showAutomaticAlert(newCriticalCases);
+        }
+    }
+    
+    showAutomaticAlert(criticalCases) {
+        const alertData = {
+            alert_type: 'danger',
+            has_attack: true,
+            message: `🚨 ALERTA AUTOMÁTICA: Se detectaron ${criticalCases.length} ataque(s) crítico(s) nuevo(s)`,
+            cases: criticalCases.map(caseItem => ({
+                id: caseItem.id,
+                detected_at: caseItem.fecha || caseItem.detected_at,
+                severity: caseItem.gravedad || caseItem.severity,
+                process_name: caseItem.proceso || caseItem.process_name,
+                attacker_ip: caseItem.ip || caseItem.attacker_ip,
+                attack_type: caseItem.tipo_ataque || caseItem.attack_type || 'Desconocido'
+            }))
+        };
+        
+        showAlert(alertData);
+        
+        // Reproducir sonido de alerta (opcional)
+        this.playAlertSound();
+    }
+    
+    playAlertSound() {
+        // Crear un sonido de alerta simple usando Web Audio API
+        try {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        } catch (e) {
+            console.log('No se pudo reproducir sonido de alerta');
         }
     }
 
@@ -109,6 +196,17 @@ class CyberGuardDashboard {
     }
 
     updateSystemStatus(statusData) {
+        // Verificar si el estado cambió a ATAQUE
+        const previousStatus = this.lastSystemStatus || 'NORMAL';
+        this.lastSystemStatus = statusData.status;
+        
+        // Si el estado cambió a ATAQUE, verificar si hay casos críticos
+        if (statusData.status === 'ATAQUE' && previousStatus !== 'ATAQUE') {
+            console.log('🚨 Estado del sistema cambió a ATAQUE');
+            // Cargar casos para mostrar alerta automática
+            this.loadCases();
+        }
+        
         // Actualizar sidebar
         const statusDot = document.getElementById('sidebarStatusDot');
         const statusText = document.getElementById('sidebarStatusText');
@@ -492,6 +590,8 @@ class CyberGuardDashboard {
                 this.loadCases();
             }
         }, 3000);
+        
+        console.log('✅ Auto-refresh activado (cada 3 segundos) - Las alertas aparecerán automáticamente');
     }
 
     // Helper methods
@@ -559,23 +659,112 @@ class CyberGuardDashboard {
 // Funciones globales
 async function triggerScan() {
     try {
+        console.log('🔍 Iniciando escaneo...');
+        
+        // Mostrar indicador de carga
+        const scanButton = document.querySelector('button[onclick="triggerScan()"]');
+        const originalText = scanButton.innerHTML;
+        scanButton.disabled = true;
+        scanButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Escaneando...';
+        
         const response = await fetch('/api/scan', { method: 'POST' });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
         
+        // Restaurar botón
+        scanButton.disabled = false;
+        scanButton.innerHTML = originalText;
+        
         if (data.error) {
             throw new Error(data.error);
         }
 
-        alert('✅ Escaneo de seguridad iniciado correctamente');
+        console.log('✅ Escaneo completado:', data);
+        
+        // Mostrar alerta con los resultados
+        showAlert(data);
+        
+        // Actualizar datos
         dashboard.loadCases();
         dashboard.loadSystemStatus();
+        
     } catch (error) {
-        console.error('Error triggering scan:', error);
-        alert('❌ Error iniciando escaneo: ' + error.message);
+        console.error('❌ Error triggering scan:', error);
+        
+        // Restaurar botón en caso de error
+        const scanButton = document.querySelector('button[onclick="triggerScan()"]');
+        if (scanButton) {
+            scanButton.disabled = false;
+            scanButton.innerHTML = '<i class="fas fa-radar"></i> Escanear Ahora';
+        }
+        
+        showAlert({
+            alert_type: 'error',
+            message: 'Error durante el escaneo: ' + error.message,
+            has_attack: false
+        });
     }
+}
+
+function showAlert(data) {
+    const alertPanel = document.getElementById('alertPanel');
+    const alertIcon = document.getElementById('alertIcon');
+    const alertTitle = document.getElementById('alertTitle');
+    const alertMessage = document.getElementById('alertMessage');
+    const alertDetails = document.getElementById('alertDetails');
+    
+    // Configurar tipo de alerta
+    alertPanel.className = 'alert-panel alert-' + (data.alert_type || 'info');
+    
+    // Configurar icono
+    if (data.has_attack || data.alert_type === 'danger') {
+        alertIcon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+        alertTitle.textContent = '🚨 ALERTA DE SEGURIDAD';
+    } else if (data.alert_type === 'success') {
+        alertIcon.innerHTML = '<i class="fas fa-check-circle"></i>';
+        alertTitle.textContent = '✅ Sistema Seguro';
+    } else {
+        alertIcon.innerHTML = '<i class="fas fa-info-circle"></i>';
+        alertTitle.textContent = 'ℹ️ Información';
+    }
+    
+    // Configurar mensaje
+    alertMessage.textContent = data.message || 'Escaneo completado';
+    
+    // Configurar detalles si hay casos
+    if (data.cases && data.cases.length > 0) {
+        let detailsHTML = '<div style="margin-top: 12px;"><strong>Casos detectados:</strong></div>';
+        data.cases.forEach(caseItem => {
+            const date = new Date(caseItem.detected_at).toLocaleString();
+            detailsHTML += `
+                <div class="case-item">
+                    <strong>Caso #${caseItem.id}</strong> - ${caseItem.attack_type || 'Desconocido'}<br>
+                    <small>Proceso: ${caseItem.process_name || 'N/A'} | IP: ${caseItem.attacker_ip || 'N/A'}</small><br>
+                    <small>Fecha: ${date} | Severidad: ${caseItem.severity || 'N/A'}</small>
+                </div>
+            `;
+        });
+        alertDetails.innerHTML = detailsHTML;
+    } else {
+        alertDetails.innerHTML = '';
+    }
+    
+    // Mostrar panel
+    alertPanel.style.display = 'block';
+    
+    // Auto-ocultar después de 10 segundos si es éxito
+    if (data.alert_type === 'success' && !data.has_attack) {
+        setTimeout(() => {
+            closeAlert();
+        }, 10000);
+    }
+}
+
+function closeAlert() {
+    const alertPanel = document.getElementById('alertPanel');
+    alertPanel.style.display = 'none';
 }
 
 function showPage(pageName) {
