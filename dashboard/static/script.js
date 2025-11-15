@@ -583,7 +583,12 @@ function closeReport() {
 }
 
 function printReport() {
-    window.print();
+    if (dashboard.currentCase) {
+        // Descargar PDF directamente
+        window.open(`/api/report/${dashboard.currentCase.id}/pdf`, '_blank');
+    } else {
+        alert('Por favor, selecciona un incidente primero');
+    }
 }
 
 function exportIncidents() {

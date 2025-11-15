@@ -1,9 +1,16 @@
-# app_integrated_real.py - VERSIÓN SIN DATOS MOCK
-from flask import Flask, render_template, jsonify, request
+# app_integrated.py - CyberGuard Backend + Frontend Integrado
+from flask import Flask, render_template, jsonify, request, send_file
 import sqlite3
 import json
 from datetime import datetime
 from pathlib import Path
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
+import io
 
 app = Flask(__name__)
 
@@ -307,6 +314,103 @@ def receive_event():
         
     except Exception as e:
         print(f"Error receiving event: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/report/<int:case_id>/pdf')
+def download_pdf_report(case_id):
+    """Generar y descargar reporte en PDF"""
+    try:
+        # Obtener datos del caso
+        conn = get_connection()
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT id, detected_at, severity, process_name, attacker_ip, folder, actions
+            FROM cases WHERE id = ?
+        """, (case_id,))
+        
+        case = cur.fetchone()
+        if not case:
+            return jsonify({"error": "Caso no encontrado"}), 404
+        
+        case_dict = dict(case)
+        conn.close()
+
+        # Crear PDF en memoria
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        
+        # Contenido del PDF
+        story = []
+        styles = getSampleStyleSheet()
+        
+        # Título
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=14,
+            spaceAfter=20,
+            alignment=1,
+            textColor=colors.black
+        )
+        story.append(Paragraph("INFORME FORENSE - CYBERGUARD SV", title_style))
+        story.append(Spacer(1, 15))
+        
+        # Información del caso
+        story.append(Paragraph("<b>INFORMACIÓN DEL CASO</b>", styles['Heading2']))
+        
+        case_data = [
+            ["Número de Caso:", f"#{case_dict['id']}"],
+            ["Fecha de Detección:", case_dict['detected_at']],
+            ["Gravedad:", case_dict['severity'].upper()],
+            ["Proceso:", case_dict['process_name']],
+            ["IP Atacante:", case_dict['attacker_ip']],
+            ["Tipo de Ataque:", case_dict['folder']],
+        ]
+        
+        case_table = Table(case_data, colWidths=[2*inch, 3*inch])
+        case_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('BACKGROUND', (1, 0), (1, -1), colors.white),
+        ]))
+        
+        story.append(case_table)
+        story.append(Spacer(1, 15))
+        
+        # Acciones tomadas
+        story.append(Paragraph("<b>ACCIONES DE MITIGACIÓN</b>", styles['Heading2']))
+        try:
+            actions = json.loads(case_dict.get('actions', '[]'))
+            actions_text = ", ".join(actions) if actions else "Ninguna acción registrada"
+        except:
+            actions_text = "Ninguna acción registrada"
+            
+        story.append(Paragraph(actions_text, styles['Normal']))
+        story.append(Spacer(1, 20))
+        
+        # Pie de página
+        generated_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        story.append(Paragraph(f"<i>Reporte generado: {generated_time}</i>", styles['Italic']))
+        story.append(Paragraph("<i>CyberGuard SV - Sistema de detección de ransomware</i>", styles['Italic']))
+        
+        # Generar PDF
+        doc.build(story)
+        buffer.seek(0)
+        
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=f"reporte_caso_{case_id}.pdf",
+            mimetype='application/pdf'
+        )
+        
+    except Exception as e:
+        print(f"Error generando PDF: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
