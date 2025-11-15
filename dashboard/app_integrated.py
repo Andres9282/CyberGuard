@@ -458,56 +458,21 @@ def download_pdf_report(case_id):
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    import os
     import socket
     
-    # Permitir que el puerto se configure desde variable de entorno
-    PORT = int(os.getenv('PORT', 5001))  # Default 5001 para compatibilidad con monitor
+    print("=" * 70)
+    print("🚀 CYBERGUARD SV - SERVIDOR INICIADO")
+    print("=" * 70)
+    print("🌐 URLs de acceso:")
+    print(f"   • Local: http://localhost:5000")
+    print(f"   • Red REAL: http://10.74.11.116:5000  ← ✅ USA ESTA CON LOS DEMÁS")
+    print(f"   • Otra red: http://192.168.137.1:5000  ← ❌ NO usar esta")
+    print("")
+    print("📋 Instrucciones para tu equipo:")
+    print("   1. Todos deben estar en la MISMA red WiFi/Ethernet")
+    print("   2. Usar: http://10.74.11.116:5000")
+    print("   3. Si no funciona, verificar firewall")
+    print("=" * 70)
     
-    # Verificar que los archivos necesarios existan
-    template_path = Path(__file__).parent / 'templates' / 'index.html'
-    static_path = Path(__file__).parent / 'static' / 'script.js'
-    
-    if not template_path.exists():
-        print(f"ERROR: No se encuentra el template: {template_path}")
-        exit(1)
-    
-    if not static_path.exists():
-        print(f"ERROR: No se encuentra el script: {static_path}")
-        exit(1)
-    
-    # Obtener IPs de la computadora
-    def get_local_ip():
-        try:
-            # Conectar a un servidor externo para obtener la IP local
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            s.connect(("8.8.8.8", 80))
-            ip = s.getsockname()[0]
-            s.close()
-            return ip
-        except:
-            return "127.0.0.1"
-    
-    local_ip = get_local_ip()
-    
-    print("=" * 60)
-    print("🚀 CYBERGUARD SV - SISTEMA REAL")
-    print("=" * 60)
-    print(f"\n📊 DASHBOARD DISPONIBLE EN:")
-    print(f"   Local:    http://localhost:{PORT}")
-    print(f"   Red:      http://{local_ip}:{PORT}")
-    print(f"\n📡 ENDPOINT DE EVENTOS:")
-    print(f"   http://{local_ip}:{PORT}/event")
-    print(f"\n💾 Base de datos: database/cyberguard.db")
-    print(f"📝 Los casos mostrados son REALES de la base de datos")
-    print("\n" + "=" * 60)
-    print("✅ Servidor iniciando...")
-    print("   Presiona Ctrl+C para detener")
-    print("=" * 60 + "\n")
-    
-    try:
-        app.run(debug=True, port=PORT, host='0.0.0.0', threaded=True)
-    except Exception as e:
-        print(f"ERROR al iniciar el servidor: {e}")
-        import traceback
-        traceback.print_exc()
+    # Ejecutar servidor
+    app.run(debug=True, port=5000, host='0.0.0.0', threaded=True)
