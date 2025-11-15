@@ -32,7 +32,7 @@ FOLDER_TO_WATCH = os.getenv("CYBERGUARD_WATCH_FOLDER", DEFAULT_FOLDER)
 
 # Configuración de red para ataque remoto
 # IP de la computadora donde está el agente (para ataques remotos)
-AGENT_IP = os.getenv("CYBERGUARD_AGENT_IP", "110.74.10.88")
+AGENT_IP = os.getenv("CYBERGUARD_AGENT_IP", "10.74.10.88")
 AGENT_ATTACK_URL = f"http://{AGENT_IP}:{AGENT_PORT}/attack"
 
 # Cooldown para detección de eventos

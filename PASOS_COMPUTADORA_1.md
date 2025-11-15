@@ -89,7 +89,8 @@ Abre una terminal:
 
 ```bash
 cd CyberGuard
-py backend/server.py
+python3 -m backend.server
+
 ```
 
 **Nota:** Si `py` no funciona, activa el entorno virtual primero:
