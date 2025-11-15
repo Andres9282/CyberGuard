@@ -58,6 +58,7 @@ def send_event(process_name, attacker_ip, artifacts):
         "attacker_ip": attacker_ip,
         "attack_type": "ransomware",
         "actions": ["process_terminated"] if severity != "normal" else [],
+        "features": features,  # Features al nivel superior para el backend
 
         "events": [
             {
@@ -78,11 +79,19 @@ def send_event(process_name, attacker_ip, artifacts):
     }
 
     print("\n📤 Enviando evento al backend…")
+    print(f"   URL: {BACKEND_URL}")
+    print(f"   Severity: {severity}")
+    print(f"   Features: {features}")
     try:
-        r = requests.post(BACKEND_URL, json=payload, timeout=5)
-        print("📥 Respuesta del backend:", r.text)
-    except Exception as e:
-        print("❌ Error enviando evento:", e)
+        r = requests.post(BACKEND_URL, json=payload, timeout=10)
+        r.raise_for_status()
+        print(f"✅ Respuesta del backend: {r.status_code}")
+        if r.text:
+            print(f"   {r.text}")
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Error enviando evento: {e}")
+        if hasattr(e, 'response') and e.response is not None:
+            print(f"   Respuesta del servidor: {e.response.text}")
 
     return severity
 

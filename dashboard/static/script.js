@@ -481,13 +481,13 @@ class CyberGuardDashboard {
     }
 
     startAutoRefresh() {
-        // Actualizar cada 15 segundos
+        // Actualizar cada 3 segundos para ver ataques en tiempo real
         this.autoRefreshInterval = setInterval(() => {
             this.loadSystemStatus();
             if (this.currentPage === 'dashboard' || this.currentPage === 'incidents') {
                 this.loadCases();
             }
-        }, 15000);
+        }, 3000);
     }
 
     // Helper methods

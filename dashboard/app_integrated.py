@@ -48,9 +48,16 @@ def create_tables():
             timestamp TEXT,
             event_type TEXT,
             details TEXT,
+            features TEXT,
             FOREIGN KEY(case_id) REFERENCES cases(id)
         )
     """)
+    
+    # Agregar columna features si no existe (para bases de datos existentes)
+    try:
+        cur.execute("ALTER TABLE events ADD COLUMN features TEXT")
+    except sqlite3.OperationalError:
+        pass  # La columna ya existe
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS artifacts (
@@ -323,6 +330,7 @@ def receive_event():
         conn.commit()
         conn.close()
 
+        print(f"✅ Evento recibido y guardado - Case ID: {case_id}")
         return jsonify({
             "status": "ok",
             "case_id": case_id,
@@ -330,12 +338,9 @@ def receive_event():
         })
 
     except Exception as e:
-        print(f"Error receiving event: {e}")
-        return jsonify({"error": str(e)}), 500
-
-        
-    except Exception as e:
-        print(f"Error receiving event: {e}")
+        print(f"❌ Error receiving event: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/report/<int:case_id>/pdf')
@@ -436,8 +441,12 @@ def download_pdf_report(case_id):
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
+    import os
+    # Permitir que el puerto se configure desde variable de entorno
+    PORT = int(os.getenv('PORT', 5001))  # Default 5001 para compatibilidad con monitor
     print("🚀 CyberGuard SV - Sistema REAL")
-    print("📊 Dashboard: http://localhost:5000")
+    print(f"📊 Dashboard: http://localhost:{PORT}")
+    print(f"📡 Endpoint de eventos: http://0.0.0.0:{PORT}/event")
     print("💾 Base de datos: database/cyberguard.db")
     print("📝 Nota: Los casos mostrados son REALES de la base de datos")
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    app.run(debug=True, port=PORT, host='0.0.0.0')
