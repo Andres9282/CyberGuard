@@ -110,7 +110,7 @@ class FolderChangeHandler(FileSystemEventHandler):
 
         last_trigger_time = now
 
-        print("\n⚠️ Cambio detectado:", event.src_path)
+        print("\n Cambio detectado:", event.src_path)
 
         # 1. EXTRAER FEATURES (la misma función que baseline)
         features = extract_features(FOLDER_TO_WATCH)
@@ -122,7 +122,7 @@ class FolderChangeHandler(FileSystemEventHandler):
             print("📘 No es ataque. Comportamiento normal.")
             return
 
-        print("🔥 ATAQUE DETECTADO: posible ransomware")
+        print(" ATAQUE DETECTADO: posible ransomware")
 
         # 3. recolectar evidencia
         evidence = collect_evidence(event.src_path)
@@ -153,12 +153,12 @@ if __name__ == "__main__":
     # Crear carpeta si no existe
     folder_path = Path(FOLDER_TO_WATCH)
     if not folder_path.exists():
-        print(f"⚠️  Carpeta no existe. Creando: {FOLDER_TO_WATCH}")
+        print(f"  Carpeta no existe. Creando: {FOLDER_TO_WATCH}")
         try:
             folder_path.mkdir(parents=True, exist_ok=True)
-            print(f"✅ Carpeta creada exitosamente")
+            print(f" Carpeta creada exitosamente")
         except Exception as e:
-            print(f"❌ Error creando carpeta: {e}")
+            print(f" Error creando carpeta: {e}")
             print(f"   Por favor crea la carpeta manualmente: {FOLDER_TO_WATCH}")
             sys.exit(1)
     

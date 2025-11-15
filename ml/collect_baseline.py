@@ -32,7 +32,7 @@ def main():
     with BASELINE_FILE.open("w", encoding="utf-8") as f:
         json.dump(samples, f, indent=4)
 
-    print(f"\n🟢 Baseline guardado en: {BASELINE_FILE}")
+    print(f"\n Baseline guardado en: {BASELINE_FILE}")
     print("   Ahora puedes entrenar el modelo con: python -m ml.train_model")
 
 

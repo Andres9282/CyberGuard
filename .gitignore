@@ -98,7 +98,6 @@ ransom_test_output/
 # ------------------------------
 
 # Reportes generados
-reports/
 reports/*.pdf
 reports/*.html
 reports/*.json
