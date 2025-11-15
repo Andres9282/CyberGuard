@@ -1,176 +1,34 @@
 # agent/monitor.py
-
-import time
-import json
-import os
-import sys
-import psutil
-import requests
-from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+import time
+import requests
+from backend.config import FOLDER_TO_WATCH, BACKEND_URL
+from ml.features import extract_features   # crea features
 
-from ml.detect import detect_anomaly
-from ml.features import extract_features   # <-- USAMOS LA FUNCIÓN NUEVA UNIFICADA
+class AttackHandler(FileSystemEventHandler):
 
-# Importar configuración centralizada
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-from backend.config import FOLDER_TO_WATCH, BACKEND_URL, COOLDOWN_SECONDS
-
-# ------------------------------
-# CONFIGURACIÓN DEL AGENTE
-# ------------------------------
-
-last_trigger_time = 0
-
-
-# ------------------------------
-# FUNCIÓN: Extraer evidencia
-# ------------------------------
-
-def collect_evidence(path_changed):
-    # 1. top proceso por uso de CPU
-    suspicious = sorted(
-        psutil.process_iter(['pid', 'name', 'cpu_percent']),
-        key=lambda p: p.info['cpu_percent'],
-        reverse=True
-    )
-    top_process = suspicious[0].info if suspicious else {"name": "unknown", "pid": -1}
-
-    # 2. conexiones de red
-    conns = []
-    for c in psutil.net_connections():
-        try:
-            raddr = f"{c.raddr.ip}:{c.raddr.port}" if c.raddr else None
-            conns.append({"pid": c.pid, "laddr": str(c.laddr), "raddr": raddr})
-        except:
-            pass
-
-    # 3. archivos en carpeta monitoreada
-    files = []
-    for p in Path(FOLDER_TO_WATCH).glob("**/*"):
-        if p.is_file():
-            files.append(str(p))
-
-    return {
-        "process": top_process,
-        "network": conns,
-        "files": files,
-        "path_triggered": path_changed
-    }
-
-
-# ------------------------------
-# FUNCIÓN: DETENER ATAQUE
-# ------------------------------
-
-def stop_attack(process_name):
-    killed = []
-    for proc in psutil.process_iter(['pid', 'name']):
-        try:
-            if process_name.lower() in proc.info['name'].lower():
-                proc.kill()
-                killed.append(proc.info)
-        except:
-            pass
-    return killed
-
-
-# ------------------------------
-# FUNCIÓN: ENVIAR REPORTE
-# ------------------------------
-
-def send_to_backend(severity, features, evidence, actions, folder):
-    data = {
-        "severity": severity,
-        "type": "filesystem_anomaly",
-        "folder": folder,
-        "features": features,
-        "actions": actions,
-        "evidence": evidence
-    }
-    try:
-        res = requests.post(BACKEND_URL, json=data)
-        print(" Enviado a backend →", res.text)
-    except Exception as e:
-        print(" Error enviando al backend:", e)
-
-
-# ------------------------------
-# HANDLER: DETECTA CAMBIOS
-# ------------------------------
-
-class FolderChangeHandler(FileSystemEventHandler):
     def on_any_event(self, event):
-        global last_trigger_time
+        features = extract_features(event)
 
-        now = time.time()
-        if now - last_trigger_time < COOLDOWN_SECONDS:
-            return
+        print("📂 Cambio detectado:", event.src_path)
+        print("🔍 Features:", features)
 
-        last_trigger_time = now
+        requests.post(BACKEND_URL, json={"features": features})
 
-        print("\n Cambio detectado:", event.src_path)
-
-        # 1. EXTRAER FEATURES (la misma función que baseline)
-        features = extract_features(FOLDER_TO_WATCH)
-        print("Features extraídos:", features)
-
-        # 2. IA detecta ataque
-        is_attack = detect_anomaly(features)
-        if not is_attack:
-            print("📘 No es ataque. Comportamiento normal.")
-            return
-
-        print(" ATAQUE DETECTADO: posible ransomware")
-
-        # 3. recolectar evidencia
-        evidence = collect_evidence(event.src_path)
-
-        # 4. parar proceso sospechoso
-        killed = stop_attack(evidence["process"]["name"])
-        actions = {"killed_processes": killed}
-
-        # 5. enviar reporte
-        send_to_backend(
-            severity="high",
-            features=features,
-            evidence=evidence,
-            actions=actions,
-            folder=FOLDER_TO_WATCH
-        )
-
-
-# ------------------------------
-# MAIN
-# ------------------------------
-
-if __name__ == "__main__":
-    print("🔵 CyberGuard Agent iniciado...")
-    print(f"Vigilando: {FOLDER_TO_WATCH}")
-    print(f"Backend URL: {BACKEND_URL}")
-    
-    # Crear carpeta si no existe
-    folder_path = Path(FOLDER_TO_WATCH)
-    if not folder_path.exists():
-        print(f"  Carpeta no existe. Creando: {FOLDER_TO_WATCH}")
-        try:
-            folder_path.mkdir(parents=True, exist_ok=True)
-            print(f" Carpeta creada exitosamente")
-        except Exception as e:
-            print(f" Error creando carpeta: {e}")
-            print(f"   Por favor crea la carpeta manualmente: {FOLDER_TO_WATCH}")
-            sys.exit(1)
-    
-    handler = FolderChangeHandler()
+def start_monitor():
     observer = Observer()
+    handler = AttackHandler()
     observer.schedule(handler, FOLDER_TO_WATCH, recursive=True)
     observer.start()
+    print(f"👀 Monitoreando carpeta: {FOLDER_TO_WATCH}")
 
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
         observer.stop()
-
     observer.join()
+
+if __name__ == "__main__":
+    start_monitor()
