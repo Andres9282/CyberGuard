@@ -1,24 +1,69 @@
 # ml/features.py
-import psutil
-import os
 from pathlib import Path
+import os
+import time
 
-def extract_features(attack_folder=None):
+
+# ==============================
+#    FEATURE EXTRACTOR
+# ==============================
+
+def extract_features(folder):
     """
-    Devuelve el vector de características uniforme para IA.
-    features = [cpu_percent, ram_percent, total_processes, files_in_attack_folder]
+    Extrae características simples y robustas de la carpeta monitoreada,
+    compatibles con Windows y sin necesidad de watchdog.
     """
 
-    cpu = psutil.cpu_percent(interval=0.1)
-    ram = psutil.virtual_memory().percent
-    processes = len(psutil.pids())
+    folder = Path(folder)
+    if not folder.exists():
+        return {
+            "size_change": 0,
+            "created": 0,
+            "deleted": 0,
+            "encrypted": 0,
+            "rapid_changes": 0
+        }
 
-    # contar archivos en la carpeta vigilada
-    file_count = 0
-    if attack_folder:
+    total_size = 0
+    encrypted = 0
+    created = 0
+    deleted = 0
+
+    # Contar archivos
+    files = list(folder.glob("*"))
+
+    # Tamaño total
+    for f in files:
         try:
-            file_count = len(os.listdir(attack_folder))
-        except FileNotFoundError:
-            file_count = 0
+            total_size += f.stat().st_size
 
-    return [cpu, ram, processes, file_count]
+            # heurística simple de archivos cifrados:
+            # extensiones sospechosas:
+            if f.suffix.lower() in [".locked", ".enc", ".encrypted"]:
+                encrypted += 1
+
+            # extensiones renombradas (simulan ransomware)
+            if f.suffix.lower() not in [".txt", ".pdf", ".jpg", ".png"]:
+                if len(f.suffix) > 6:
+                    encrypted += 1
+
+        except:
+            pass
+
+    # Heurística básica:
+    created = len(files)
+
+    # rapid_changes: entre 0 y 300
+    # Si hay muchos archivos → más riesgo
+    rapid_changes = min(created * 2, 300)
+
+    # size_change: escala proporcional al peso
+    size_change = min(int(total_size / 1024), 2000)
+
+    return {
+        "size_change": size_change,
+        "created": created,
+        "deleted": deleted,
+        "encrypted": encrypted,
+        "rapid_changes": rapid_changes
+    }

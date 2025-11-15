@@ -256,13 +256,22 @@ def receive_event():
         conn = get_connection()
         cur = conn.cursor()
 
-        # Procesar datos REALES del agente
+        # ============================
+        # Extraer data del agente
+        # ============================
+
         timestamp = data.get("timestamp", datetime.now().isoformat())
         severity = data.get("severity", "medium")
         process_name = data.get("process_name", "unknown")
         attacker_ip = data.get("attacker_ip", "unknown")
-        
+
+        # ⚠️ features que vienen del agente
+        features = data.get("features", {})
+
+        # ============================
         # Insertar caso REAL
+        # ============================
+
         cur.execute("""
             INSERT INTO cases (detected_at, severity, process_name, attacker_ip, folder, actions)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -274,23 +283,31 @@ def receive_event():
             data.get("attack_type", "unknown"),
             json.dumps(data.get("actions", []))
         ))
-        
+
         case_id = cur.lastrowid
-        
-        # Insertar eventos REALES si existen
+
+        # ============================
+        # Insertar eventos REALES
+        # incluyendo FEATURES AQUÍ
+        # ============================
+
         if "events" in data:
             for event in data["events"]:
                 cur.execute("""
-                    INSERT INTO events (case_id, timestamp, event_type, details)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO events (case_id, timestamp, event_type, details, features)
+                    VALUES (?, ?, ?, ?, ?)
                 """, (
                     case_id,
                     event.get("timestamp", timestamp),
                     event.get("event_type", "security_event"),
-                    json.dumps(event.get("details", {}))
+                    json.dumps(event.get("details", {})),
+                    json.dumps(features)   # <-- GUARDAR FEATURES AQUI
                 ))
-        
-        # Insertar artefactos REALES si existen
+
+        # ============================
+        # Insertar artefactos REALES
+        # ============================
+
         if "artifacts" in data:
             for artifact in data["artifacts"]:
                 cur.execute("""
@@ -302,15 +319,20 @@ def receive_event():
                     artifact.get("hash", ""),
                     artifact.get("operation", "detected")
                 ))
-        
+
         conn.commit()
         conn.close()
-        
+
         return jsonify({
-            "status": "ok", 
+            "status": "ok",
             "case_id": case_id,
             "message": "Evento de seguridad registrado correctamente"
         })
+
+    except Exception as e:
+        print(f"Error receiving event: {e}")
+        return jsonify({"error": str(e)}), 500
+
         
     except Exception as e:
         print(f"Error receiving event: {e}")
