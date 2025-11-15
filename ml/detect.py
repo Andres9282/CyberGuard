@@ -1,79 +1,65 @@
 # ml/detect.py
+
+import json
+import psutil
 import pickle
-import numpy as np
-from .paths import MODEL_FILE
+from pathlib import Path
+
+MODEL_PATH = Path("ml/anomaly_model.pkl")
+BASELINE_PATH = Path("data/baseline_samples.json")
 
 
-class AnomalyDetector:
+# ---------------------------------------
+# CARGAR MODELO
+# ---------------------------------------
+
+def load_model():
+    if MODEL_PATH.exists():
+        with open(MODEL_PATH, "rb") as f:
+            return pickle.load(f)
+    return None
+
+
+model = load_model()
+
+
+# ---------------------------------------
+# EXTRAER FEATURES PARA EL MODELO ML
+# ---------------------------------------
+
+def extract_features_for_ml():
     """
-    Wrapper sobre el modelo entrenado (Isolation Forest).
-    Carga el modelo una sola vez y expone un método detect().
+    Extrae métricas del sistema:
+    - número de procesos
+    - uso de CPU promedio
+    - uso de RAM
     """
+    processes = list(psutil.process_iter())
+    num_processes = len(processes)
 
-    def __init__(self, model_path=MODEL_FILE):
-        if not model_path.exists():
-            raise FileNotFoundError(
-                f"No se encontró el modelo entrenado: {model_path}\n"
-                f"Primero ejecuta: python -m ml.train_model"
-            )
-        with model_path.open("rb") as f:
-            self.model = pickle.load(f)
+    cpu_percent = psutil.cpu_percent(interval=0.2)
+    ram_percent = psutil.virtual_memory().percent
 
-    def detect(self, features):
-        """
-        features: lista de floats [files, cpu, processes]
-        return: True si es anomalía, False si es normal
-        """
-        X = np.array([features], dtype=float)
-        pred = self.model.predict(X)  # -1 = anomalía, 1 = normal
-        return pred[0] == -1
+    return [num_processes, cpu_percent, ram_percent]
 
 
-# --------- INSTANCIA GLOBAL + FUNCIÓN DE CONVENIENCIA ---------
-
-_detector = None
-
-
-def get_detector():
-    """
-    Devuelve una instancia global de AnomalyDetector,
-    para reutilizar el modelo sin recargarlo cada vez.
-    """
-    global _detector
-    if _detector is None:
-        _detector = AnomalyDetector()
-    return _detector
-
+# ---------------------------------------
+# DETECTAR ANOMALÍAS
+# ---------------------------------------
 
 def detect_anomaly(features):
     """
-    Función simple que el agente puede importar:
-    from ml.detect import detect_anomaly
+    Usa el modelo entrenado para detectar anomalías.
+    Si no hay modelo → siempre retorna False.
     """
-    detector = get_detector()
-    return detector.detect(features)
+    if model is None:
+        print("⚠️ Modelo no cargado → no se detectan anomalías.")
+        return False
 
-
-# --------- BLOQUE DE PRUEBA MANUAL ---------
-
-if __name__ == "__main__":
-    # TEST usando datos REALES del baseline
-    import json
-    from .paths import BASELINE_FILE
-
-    with BASELINE_FILE.open("r", encoding="utf-8") as f:
-        baseline = json.load(f)
-
-    normal_sample = baseline[0]  # primera muestra real
-    files, cpu, procs = normal_sample
-
-    # Creamos una muestra artificialmente "agresiva"
-    attack_sample = [
-        files + 200,           # muchos más archivos
-        min(cpu + 70, 100),    # CPU casi al 100%
-        procs + 200            # muchos más procesos
-    ]
-
-    print("Muestra baseline original:", normal_sample)
-    print("Normal test (esperado False):", detect_anomaly(normal_sample))
-    print("Attack test (esperado True):", detect_anomaly(attack_sample))
+    try:
+        prediction = model.predict([features])[0]
+        # IsolationForest: -1 = anomalía, 1 = normal
+        return prediction == -1
+    except Exception as e:
+        print("ERROR detectando anomalía:", e)
+        return False
