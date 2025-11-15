@@ -1,0 +1,120 @@
+# ------------------------------
+#   GENERALES DEL PROYECTO
+# ------------------------------
+
+# Entorno virtual
+venv/
+.venv/
+
+# Archivos temporales de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pys
+*.pkl
+
+# Archivos de configuración de entorno local
+.env
+*.env
+
+# Archivos creados por Jupyter o IPython
+.ipynb_checkpoints
+
+# ------------------------------
+#   ARCHIVOS DE IA / ML
+# ------------------------------
+
+# Modelos entrenados
+ml/model.pkl
+ml/*.sav
+ml/*.h5
+ml/*.joblib
+
+# Datos del baseline (podrían ser sensibles)
+data/baseline_samples.json
+
+# Carpeta de datos generados en ejecución
+data/logs/
+data/tmp/
+data/attack_target/
+data/evidence/
+data/artifacts/
+data/cases/
+
+# ------------------------------
+#   BACKEND / DATABASE
+# ------------------------------
+
+# Bases de datos SQLite
+backend/*.db
+backend/*.sqlite3
+backend/*.sqlite
+
+# Archivos generados por Flask o sesiones
+instance/
+backend/__pycache__/
+
+# Logs del backend
+backend/logs/
+*.log
+
+# ------------------------------
+#   DASHBOARD / FRONTEND
+# ------------------------------
+
+# Archivos de compilación de npm (si lo integran después)
+node_modules/
+dist/
+build/
+
+# ------------------------------
+#   SISTEMA / OS
+# ------------------------------
+
+# Archivos del sistema Linux/WSL
+*.swp
+*.swo
+*~
+
+# Archivos de VSCode
+.vscode/
+
+# Archivos de JetBrains / PyCharm
+.idea/
+
+# ------------------------------
+#   DEMO / ATAQUES DE PRUEBA
+# ------------------------------
+
+# Script atacante generado o archivos que cree
+attacker_output/
+tmp_attack/
+attack_simulation/
+ransom_test_output/
+
+# ------------------------------
+#   OTROS ARCHIVOS SENSIBLES
+# ------------------------------
+
+# Reportes generados
+reports/
+reports/*.pdf
+reports/*.html
+reports/*.json
+
+# Archivos de evidencia forense real
+evidence/
+evidence/*.json
+evidence/*.txt
+evidence/*.csv
+evidence/*.zip
+evidence/*.tar
+
+# ------------------------------
+#   DOCUMENTACIÓN TEMP
+# ------------------------------
+
+# Docs generados automáticamente
+docs/build/
+docs/_build/
