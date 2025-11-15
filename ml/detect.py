@@ -54,6 +54,6 @@ def detect_live():
 
 
 if __name__ == "__main__":
-    print("🔍 Prueba rápida de detección en vivo:")
+    print(" Prueba rápida de detección en vivo:")
     result = detect_live()
     print("¿Ataque detectado?:", result)

@@ -38,9 +38,9 @@ def simulate_ransomware_attack(target_folder, num_files=10, delay=0.1):
             test_file.write_text(f"Contenido original del archivo {i}\n")
         existing_files = list(target_path.glob("*.txt"))
     
-    print(f"🔥 Iniciando simulación de ataque ransomware...")
-    print(f"📁 Carpeta objetivo: {target_folder}")
-    print(f"📄 Archivos a modificar: {len(existing_files[:num_files])}")
+    print(f" Iniciando simulación de ataque ransomware...")
+    print(f" Carpeta objetivo: {target_folder}")
+    print(f" Archivos a modificar: {len(existing_files[:num_files])}")
     
     modified_count = 0
     for file_path in existing_files[:num_files]:
@@ -60,14 +60,14 @@ def simulate_ransomware_attack(target_folder, num_files=10, delay=0.1):
             file_path.unlink()
             
             modified_count += 1
-            print(f"  🔒 {file_path.name} → {new_name}")
+            print(f"   {file_path.name} → {new_name}")
             
             time.sleep(delay)
             
         except Exception as e:
-            print(f"  ❌ Error procesando {file_path}: {e}")
+            print(f"   Error procesando {file_path}: {e}")
     
-    print(f"\n✅ Ataque simulado completado: {modified_count} archivos modificados")
+    print(f"\n Ataque simulado completado: {modified_count} archivos modificados")
     return modified_count
 
 if __name__ == "__main__":

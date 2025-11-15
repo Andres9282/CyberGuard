@@ -472,7 +472,7 @@ if __name__ == "__main__":
     print("\n🚀 Iniciando servidor en http://127.0.0.1:5001\n")
     app.run(host="127.0.0.1", port=5001, debug=True)
 
-=======
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from db_locall import create_tables, create_case, add_event, add_artifact, get_cases, get_case_details

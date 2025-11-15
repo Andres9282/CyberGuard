@@ -14,7 +14,7 @@ BACKEND_PORT = int(os.getenv("CYBERGUARD_BACKEND_PORT", "5001"))
 # IMPORTANTE: Debe incluir el endpoint /event para que el agente pueda enviar eventos
 BACKEND_URL = os.getenv(
     "CYBERGUARD_BACKEND_URL", 
-    f"http://localhost:{BACKEND_PORT}/event"  # Por defecto localhost, configurar con IP real
+    f"http://10.74.10.88:5001"  # Por defecto localhost, configurar con IP real
 )
 
 # Configuración del Agente (Computadora 2 - Cliente)
