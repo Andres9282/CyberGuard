@@ -1,7 +1,7 @@
 # backend/server.py
 from flask import Flask, request, jsonify
 from datetime import datetime
-from backend.db import (
+from db import (
     create_tables, create_case, add_event,
     add_evidence, get_cases, get_case_details
 )
