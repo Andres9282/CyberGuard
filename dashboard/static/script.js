@@ -44,23 +44,26 @@ class CyberGuardDashboard {
 
     async loadSystemStatus() {
         try {
+            console.log('🔄 Cargando estado del sistema...');
             const response = await fetch('/api/status');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
+            console.log('✅ Estado del sistema:', data);
             this.updateSystemStatus(data);
         } catch (error) {
-            console.error('Error loading system status:', error);
+            console.error('❌ Error loading system status:', error);
             this.updateSystemStatus({
                 status: 'ERROR',
-                message: 'Error de conexión con el servidor'
+                message: `Error de conexión: ${error.message}`
             });
         }
     }
 
     async loadCases() {
         try {
+            console.log('🔄 Cargando casos...');
             const response = await fetch('/api/cases');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -70,10 +73,11 @@ class CyberGuardDashboard {
             // Si la respuesta es un array, usarlo directamente
             // Si es un objeto con propiedad cases, usar esa propiedad
             this.cases = Array.isArray(data) ? data : (data.cases || []);
+            console.log(`✅ Casos cargados: ${this.cases.length}`);
             this.renderCases();
             this.updateIncidentsCount();
         } catch (error) {
-            console.error('Error loading cases:', error);
+            console.error('❌ Error loading cases:', error);
             this.cases = [];
             this.renderCases();
             this.updateIncidentsCount();
@@ -610,5 +614,12 @@ function generateActivityReport() {
 // Inicializar dashboard cuando la página cargue
 let dashboard;
 document.addEventListener('DOMContentLoaded', () => {
-    dashboard = new CyberGuardDashboard();
+    console.log('🚀 Inicializando CyberGuard Dashboard...');
+    try {
+        dashboard = new CyberGuardDashboard();
+        console.log('✅ Dashboard inicializado correctamente');
+    } catch (error) {
+        console.error('❌ Error al inicializar dashboard:', error);
+        alert('Error al cargar el dashboard. Revisa la consola para más detalles.');
+    }
 });

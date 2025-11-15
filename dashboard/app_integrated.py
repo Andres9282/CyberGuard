@@ -1,5 +1,6 @@
 # app_integrated.py - CyberGuard Backend + Frontend Integrado
 from flask import Flask, render_template, jsonify, request, send_file
+from flask_cors import CORS
 import sqlite3
 import json
 from datetime import datetime
@@ -13,6 +14,7 @@ from reportlab.lib.units import inch
 import io
 
 app = Flask(__name__)
+CORS(app)  # Permitir peticiones desde cualquier origen
 
 # Configuración de base de datos REAL
 DB_PATH = Path("database/cyberguard.db")
@@ -77,7 +79,22 @@ create_tables()
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    """Página principal del dashboard"""
+    try:
+        return render_template('index.html')
+    except Exception as e:
+        import traceback
+        error_msg = f"Error cargando template: {str(e)}\n\n{traceback.format_exc()}"
+        return error_msg, 500
+
+@app.route('/api/test')
+def test_connection():
+    """Endpoint de prueba para verificar que el servidor funciona"""
+    return jsonify({
+        "status": "ok",
+        "message": "Servidor funcionando correctamente",
+        "timestamp": datetime.now().isoformat()
+    })
 
 @app.route('/api/status')
 def get_status():
@@ -442,11 +459,55 @@ def download_pdf_report(case_id):
 
 if __name__ == '__main__':
     import os
+    import socket
+    
     # Permitir que el puerto se configure desde variable de entorno
     PORT = int(os.getenv('PORT', 5001))  # Default 5001 para compatibilidad con monitor
-    print("🚀 CyberGuard SV - Sistema REAL")
-    print(f"📊 Dashboard: http://localhost:{PORT}")
-    print(f"📡 Endpoint de eventos: http://0.0.0.0:{PORT}/event")
-    print("💾 Base de datos: database/cyberguard.db")
-    print("📝 Nota: Los casos mostrados son REALES de la base de datos")
-    app.run(debug=True, port=PORT, host='0.0.0.0')
+    
+    # Verificar que los archivos necesarios existan
+    template_path = Path(__file__).parent / 'templates' / 'index.html'
+    static_path = Path(__file__).parent / 'static' / 'script.js'
+    
+    if not template_path.exists():
+        print(f"ERROR: No se encuentra el template: {template_path}")
+        exit(1)
+    
+    if not static_path.exists():
+        print(f"ERROR: No se encuentra el script: {static_path}")
+        exit(1)
+    
+    # Obtener IPs de la computadora
+    def get_local_ip():
+        try:
+            # Conectar a un servidor externo para obtener la IP local
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return "127.0.0.1"
+    
+    local_ip = get_local_ip()
+    
+    print("=" * 60)
+    print("🚀 CYBERGUARD SV - SISTEMA REAL")
+    print("=" * 60)
+    print(f"\n📊 DASHBOARD DISPONIBLE EN:")
+    print(f"   Local:    http://localhost:{PORT}")
+    print(f"   Red:      http://{local_ip}:{PORT}")
+    print(f"\n📡 ENDPOINT DE EVENTOS:")
+    print(f"   http://{local_ip}:{PORT}/event")
+    print(f"\n💾 Base de datos: database/cyberguard.db")
+    print(f"📝 Los casos mostrados son REALES de la base de datos")
+    print("\n" + "=" * 60)
+    print("✅ Servidor iniciando...")
+    print("   Presiona Ctrl+C para detener")
+    print("=" * 60 + "\n")
+    
+    try:
+        app.run(debug=True, port=PORT, host='0.0.0.0', threaded=True)
+    except Exception as e:
+        print(f"ERROR al iniciar el servidor: {e}")
+        import traceback
+        traceback.print_exc()
