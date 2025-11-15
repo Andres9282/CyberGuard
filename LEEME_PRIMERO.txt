@@ -1,0 +1,39 @@
+═══════════════════════════════════════════════════════════════
+  🚀 CYBERGUARD - ATAQUE REMOTO - INSTRUCCIONES
+═══════════════════════════════════════════════════════════════
+
+✅ TODO ESTÁ CONFIGURADO Y LISTO
+
+📋 SIGUE ESTOS PASOS:
+
+1. EN ESTA COMPUTADORA (Computadora 1):
+   → Abre: PASOS_COMPUTADORA_1.md
+   → Sigue los pasos exactos
+
+2. EN LA OTRA COMPUTADORA (Computadora 2):
+   → Abre: PASOS_COMPUTADORA_2.md
+   → Sigue los pasos exactos
+
+═══════════════════════════════════════════════════════════════
+
+📁 ARCHIVOS IMPORTANTES:
+
+✅ PASOS_COMPUTADORA_1.md  → Pasos para ESTA computadora
+✅ PASOS_COMPUTADORA_2.md  → Pasos para la OTRA computadora
+✅ RESUMEN_FINAL.md        → Confirmación de que todo está listo
+✅ TUTORIAL_ATAQUE_REMOTO.md → Tutorial completo
+
+═══════════════════════════════════════════════════════════════
+
+🔧 CONFIGURACIÓN NECESARIA:
+
+1. Edita backend/config.py en AMBAS computadoras
+2. Cambia las IPs según tu red
+3. Sigue los pasos en los archivos PASOS_COMPUTADORA_X.md
+
+═══════════════════════════════════════════════════════════════
+
+✅ CONFIRMACIÓN: TODO ESTÁ ARREGLADO Y LISTO PARA USAR
+
+═══════════════════════════════════════════════════════════════
+

@@ -2,6 +2,8 @@
 
 import time
 import json
+import os
+import sys
 import psutil
 import requests
 from pathlib import Path
@@ -11,15 +13,14 @@ from watchdog.events import FileSystemEventHandler
 from ml.detect import detect_anomaly
 from ml.features import extract_features   # <-- USAMOS LA FUNCIÓN NUEVA UNIFICADA
 
+# Importar configuración centralizada
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from backend.config import FOLDER_TO_WATCH, BACKEND_URL, COOLDOWN_SECONDS
 
 # ------------------------------
 # CONFIGURACIÓN DEL AGENTE
 # ------------------------------
-from pathlib import Path
-FOLDER_TO_WATCH = str(Path.home() / "victim_data")
 
-BACKEND_URL = "http://10.74.10.88:5001/event"  # IP real de Windows (WSL expuesto)
-COOLDOWN_SECONDS = 5
 last_trigger_time = 0
 
 
@@ -147,6 +148,20 @@ class FolderChangeHandler(FileSystemEventHandler):
 if __name__ == "__main__":
     print("🔵 CyberGuard Agent iniciado...")
     print(f"Vigilando: {FOLDER_TO_WATCH}")
+    print(f"Backend URL: {BACKEND_URL}")
+    
+    # Crear carpeta si no existe
+    folder_path = Path(FOLDER_TO_WATCH)
+    if not folder_path.exists():
+        print(f"⚠️  Carpeta no existe. Creando: {FOLDER_TO_WATCH}")
+        try:
+            folder_path.mkdir(parents=True, exist_ok=True)
+            print(f"✅ Carpeta creada exitosamente")
+        except Exception as e:
+            print(f"❌ Error creando carpeta: {e}")
+            print(f"   Por favor crea la carpeta manualmente: {FOLDER_TO_WATCH}")
+            sys.exit(1)
+    
     handler = FolderChangeHandler()
     observer = Observer()
     observer.schedule(handler, FOLDER_TO_WATCH, recursive=True)

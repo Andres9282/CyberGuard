@@ -1,0 +1,78 @@
+═══════════════════════════════════════════════════════════════
+  📍 CÓMO OBTENER LA IP DE LA SEGUNDA COMPUTADORA
+═══════════════════════════════════════════════════════════════
+
+La IP de la segunda computadora depende de tu red local.
+Debes obtenerla DESDE LA SEGUNDA COMPUTADORA.
+
+═══════════════════════════════════════════════════════════════
+
+📋 MÉTODO 1: Desde la Segunda Computadora (Windows)
+───────────────────────────────────────────────────────────────
+
+1. Abre PowerShell o CMD en la segunda computadora
+2. Ejecuta:
+   ipconfig
+
+3. Busca "IPv4 Address" en tu adaptador de red activo
+   (puede ser "Adaptador de Ethernet" o "Adaptador de LAN inalámbrica")
+
+   Ejemplo de salida:
+   IPv4 Address. . . . . . . . . . . : 192.168.1.100
+   
+   📝 ANOTA ESTA IP: _______________
+
+═══════════════════════════════════════════════════════════════
+
+📋 MÉTODO 2: Desde la Segunda Computadora (Linux/WSL)
+───────────────────────────────────────────────────────────────
+
+1. Abre una terminal en la segunda computadora
+2. Ejecuta:
+   hostname -I
+   
+   O también:
+   ip addr show
+   
+   O:
+   ifconfig
+
+3. Busca la IP que empieza con 192.168.x.x o 10.x.x.x
+   
+   📝 ANOTA ESTA IP: _______________
+
+═══════════════════════════════════════════════════════════════
+
+📋 MÉTODO 3: Verificar desde Esta Computadora
+───────────────────────────────────────────────────────────────
+
+Si ambas computadoras están en la misma red, puedes:
+
+1. Ver dispositivos conectados en tu router
+2. O usar un escáner de red (avanzado)
+
+═══════════════════════════════════════════════════════════════
+
+✅ DESPUÉS DE OBTENER LA IP:
+
+1. Abre backend/config.py en ESTA computadora
+2. Busca la línea ~34:
+   AGENT_IP = os.getenv("CYBERGUARD_AGENT_IP", "localhost")
+   
+3. Cambia "localhost" por la IP que anotaste:
+   AGENT_IP = os.getenv("CYBERGUARD_AGENT_IP", "192.168.1.100")
+   
+   (Reemplaza 192.168.1.100 con la IP real de la segunda PC)
+
+═══════════════════════════════════════════════════════════════
+
+💡 TIP: Si no sabes cuál es la segunda computadora:
+
+1. Ve físicamente a la segunda computadora
+2. Abre una terminal/CMD
+3. Ejecuta ipconfig (Windows) o hostname -I (Linux)
+4. Anota la IP que aparece
+5. Vuelve a esta computadora y configúrala
+
+═══════════════════════════════════════════════════════════════
+

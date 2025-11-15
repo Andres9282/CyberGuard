@@ -3,6 +3,8 @@ import sqlite3
 import json
 from pathlib import Path
 
+# Usar ruta absoluta basada en la ubicación del archivo para evitar problemas
+# cuando se ejecuta desde diferentes directorios
 DB_PATH = Path(__file__).resolve().parents[1] / "database" / "cyberguard.db"
 
 
