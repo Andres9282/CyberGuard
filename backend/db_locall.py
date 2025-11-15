@@ -20,9 +20,22 @@ def create_tables():
             severity TEXT,
             process_name TEXT,
             attacker_ip TEXT,
-            status TEXT
+            status TEXT,
+            folder TEXT,
+            actions TEXT
         );
     """)
+    
+    # Migración: agregar columnas si no existen (para bases de datos existentes)
+    try:
+        cur.execute("ALTER TABLE cases ADD COLUMN folder TEXT")
+    except sqlite3.OperationalError:
+        pass  # La columna ya existe
+    
+    try:
+        cur.execute("ALTER TABLE cases ADD COLUMN actions TEXT")
+    except sqlite3.OperationalError:
+        pass  # La columna ya existe
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS events (
@@ -54,15 +67,27 @@ def create_case(data):
     conn = get_connection()
     cur = conn.cursor()
 
+    # Extraer folder y actions de forma segura
+    folder = data.get("folder", "unknown")
+    actions = data.get("actions", [])
+    if isinstance(actions, list):
+        actions = json.dumps(actions)
+    elif isinstance(actions, str):
+        pass  # Ya es string
+    else:
+        actions = json.dumps([])
+
     cur.execute("""
-        INSERT INTO cases(detected_at, severity, process_name, attacker_ip, status)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO cases(detected_at, severity, process_name, attacker_ip, status, folder, actions)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     """, (
         data.get("timestamp"),
         data.get("severity"),
         data["process"]["name"],
         data["network"]["attacker_ip"],
-        "detenido"
+        "detenido",
+        folder,
+        actions
     ))
 
     conn.commit()
